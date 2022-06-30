@@ -93,7 +93,13 @@
     <Compile Include="..\EasyModbus\Exceptions\Exceptions.cs">
       <Link>Exceptions\Exceptions.cs</Link>
     </Compile>
-    <Compile Include="..\EasyModbus\ModbusClient.cs">
+	  <Compile Include="..\EasyModbus\IModbusClient.cs">
+		  <Link>IModbusClient.cs</Link>
+	  </Compile>
+	  <Compile Include="..\EasyModbus\IModbusServer.cs">
+		  <Link>IModbusServer.cs</Link>
+	  </Compile>
+	  <Compile Include="..\EasyModbus\ModbusClient.cs">
       <Link>ModbusClient.cs</Link>
     </Compile>
     <Compile Include="..\EasyModbus\ModbusServer.cs">
