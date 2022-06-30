@@ -5,6 +5,8 @@
     <AssemblyName>EasyModbus</AssemblyName>
     <RootNamespace>EasyModbus</RootNamespace>
     <SignAssembly>false</SignAssembly>
+    <AssemblyVersion>6.0.0.0</AssemblyVersion>
+    <FileVersion>6.0.0.0</FileVersion>
   </PropertyGroup>
   
 
