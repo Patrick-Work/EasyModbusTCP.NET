@@ -36,7 +36,7 @@ using System.IO.Ports;
 namespace EasyModbus
 {
 
-    public partial class ModbusClient
+    public partial class ModbusClient : IModbusClient
     {
 
 
@@ -60,11 +60,10 @@ namespace EasyModbus
 
         private bool dataReceived = false;
         private int bytesToRead = 0;
-        public byte[] sendData;
-        public byte[] receiveData;
         private byte[] readBuffer = new byte[256];
         private int portOut;
-
+        public byte[] sendData { get; set; }
+        public byte[] receiveData { get; set; }
         public int NumberOfRetries { get; set; } = 3;
         private int countRetries = 0;
 

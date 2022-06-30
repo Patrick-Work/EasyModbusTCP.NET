@@ -3,6 +3,8 @@
     public interface IModbusClient
     {
         int NumberOfRetries { get; set; }
+        byte[] receiveData { get; set; }
+        byte[] sendData { get; set; }
 
         event ModbusClient.ConnectedChangedHandler ConnectedChanged;
         event ModbusClient.ReceiveDataChangedHandler ReceiveDataChanged;

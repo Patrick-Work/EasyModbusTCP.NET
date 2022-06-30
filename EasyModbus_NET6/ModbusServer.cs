@@ -290,10 +290,6 @@ namespace EasyModbus
         ModbusProtocol sendData = new ModbusProtocol();
         Byte[] bytes = new Byte[2100];
         //public Int16[] _holdingRegisters = new Int16[65535];
-        //public HoldingRegisters holdingRegisters;
-        //public InputRegisters inputRegisters;
-        //public Coils coils;
-        //public DiscreteInputs discreteInputs;
         private int numberOfConnections = 0;
         private bool udpFlag;
         private bool serialFlag;
