@@ -36,8 +36,8 @@ using System.IO.Ports;
 namespace EasyModbus
 {
 
-    public partial class ModbusClient
-    { 
+    public partial class ModbusClient : IModbusClient
+    {
 
 
         #region Class Variables
@@ -207,7 +207,7 @@ namespace EasyModbus
 
                 }
 
-                
+
 
                 readBuffer = new byte[256];
                 DateTime dateTimeSend = DateTime.UtcNow;
@@ -220,7 +220,7 @@ namespace EasyModbus
                         System.Threading.Thread.Sleep(1);
                     data = new byte[255];
                     Array.Copy(readBuffer, 0, data, 6, readBuffer.Length);
-                 
+
                 }
                 if (response.UnitIdentifier != unitIdentifier)
                     data = new byte[255];
@@ -321,7 +321,7 @@ namespace EasyModbus
             return response.RegisterDataBool;
         }
 
- 
+
 
 
     }

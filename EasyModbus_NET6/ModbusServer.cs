@@ -277,20 +277,20 @@ namespace EasyModbus
             }
         }
     }
-#endregion
-    
+    #endregion
+
     /// <summary>
     /// Modbus TCP Server.
     /// </summary>
-    public class ModbusServer
+    public class ModbusServer : IModbusServer
     {
         private bool debug = false;
         Int32 port = 502;
         ModbusProtocol receiveData;
-        ModbusProtocol sendData =  new ModbusProtocol();
+        ModbusProtocol sendData = new ModbusProtocol();
         Byte[] bytes = new Byte[2100];
         //public Int16[] _holdingRegisters = new Int16[65535];
-        public HoldingRegisters holdingRegisters;      
+        public HoldingRegisters holdingRegisters;
         public InputRegisters inputRegisters;
         public Coils coils;
         public DiscreteInputs discreteInputs;
@@ -311,7 +311,7 @@ namespace EasyModbus
         Thread listenerThread;
         Thread clientConnectionThread;
         private ModbusProtocol[] modbusLogData = new ModbusProtocol[100];
-        public bool FunctionCode1Disabled {get; set;}
+        public bool FunctionCode1Disabled { get; set; }
         public bool FunctionCode2Disabled { get; set; }
         public bool FunctionCode3Disabled { get; set; }
         public bool FunctionCode4Disabled { get; set; }
@@ -401,23 +401,23 @@ namespace EasyModbus
 
         public void StopListening(CancellationToken cancellationToken)
         {
-        	if (SerialFlag & (serialport != null))
-        	{
-        		if (serialport.IsOpen)
-        			serialport.Close();
+            if (SerialFlag & (serialport != null))
+            {
+                if (serialport.IsOpen)
+                    serialport.Close();
                 shouldStop = true;
             }
             try
             {
                 tcpHandler.Disconnect();
-                
+
             }
             catch (Exception) { }
             // If the CancellationToken is marked as "needs to cancel",
             // this will throw the appropriate exception.
             cancellationToken.ThrowIfCancellationRequested();
         }
-        
+
         private void ListenerThread()
         {
             if (!udpFlag & !serialFlag)
@@ -452,38 +452,38 @@ namespace EasyModbus
                 }
             }
             else
-               while (!shouldStop)
-               {
-            	if (udpFlag)
-            	{
-                    if (udpClient == null | PortChanged)
+                while (!shouldStop)
+                {
+                    if (udpFlag)
                     {
-                        IPEndPoint localEndoint = new IPEndPoint(LocalIPAddress, port);
-                        udpClient = new UdpClient(localEndoint);
-                        if (debug) StoreLogData.Instance.Store($"EasyModbus Server listing for incomming data at Port {port}, local IP {LocalIPAddress}", System.DateTime.Now);
-                        udpClient.Client.ReceiveTimeout = 1000;
-                        iPEndPoint = new IPEndPoint(IPAddress.Any, port);
-                        PortChanged = false;                      
+                        if (udpClient == null | PortChanged)
+                        {
+                            IPEndPoint localEndoint = new IPEndPoint(LocalIPAddress, port);
+                            udpClient = new UdpClient(localEndoint);
+                            if (debug) StoreLogData.Instance.Store($"EasyModbus Server listing for incomming data at Port {port}, local IP {LocalIPAddress}", System.DateTime.Now);
+                            udpClient.Client.ReceiveTimeout = 1000;
+                            iPEndPoint = new IPEndPoint(IPAddress.Any, port);
+                            PortChanged = false;
+                        }
+                        if (tcpHandler != null)
+                            tcpHandler.Disconnect();
+                        try
+                        {
+                            bytes = udpClient.Receive(ref iPEndPoint);
+                            portIn = iPEndPoint.Port;
+                            NetworkConnectionParameter networkConnectionParameter = new NetworkConnectionParameter();
+                            networkConnectionParameter.bytes = bytes;
+                            ipAddressIn = iPEndPoint.Address;
+                            networkConnectionParameter.portIn = portIn;
+                            networkConnectionParameter.ipAddressIn = ipAddressIn;
+                            ParameterizedThreadStart pts = new ParameterizedThreadStart(this.ProcessReceivedData);
+                            Thread processDataThread = new Thread(pts);
+                            processDataThread.Start(networkConnectionParameter);
+                        }
+                        catch (Exception)
+                        {
+                        }
                     }
-                    if (tcpHandler != null)
-                        tcpHandler.Disconnect();
-                    try
-                    {                       
-                        bytes = udpClient.Receive(ref iPEndPoint);
-                        portIn = iPEndPoint.Port;
-                        NetworkConnectionParameter networkConnectionParameter = new NetworkConnectionParameter();
-                        networkConnectionParameter.bytes = bytes;
-                        ipAddressIn = iPEndPoint.Address;
-                        networkConnectionParameter.portIn = portIn;
-                        networkConnectionParameter.ipAddressIn = ipAddressIn;
-                        ParameterizedThreadStart pts = new ParameterizedThreadStart(this.ProcessReceivedData);
-                        Thread processDataThread = new Thread(pts);
-                        processDataThread.Start(networkConnectionParameter);
-                    }
-                    catch (Exception)
-                    {                       
-                    }    
-            	}
 
                 }
         }
@@ -568,7 +568,7 @@ namespace EasyModbus
                         SerialDataReceivedEventArgs e)
         {
             int silence = 4000 / baudrate;
-            if ((DateTime.Now.Ticks - lastReceive.Ticks) > TimeSpan.TicksPerMillisecond*silence)
+            if ((DateTime.Now.Ticks - lastReceive.Ticks) > TimeSpan.TicksPerMillisecond * silence)
                 nextSign = 0;
 
 
@@ -578,30 +578,30 @@ namespace EasyModbus
             byte[] rxbytearray = new byte[numbytes];
 
             sp.Read(rxbytearray, 0, numbytes);
-            
-            Array.Copy(rxbytearray, 0,  readBuffer, nextSign, rxbytearray.Length);
-            lastReceive= DateTime.Now;
-            nextSign = numbytes+ nextSign;
+
+            Array.Copy(rxbytearray, 0, readBuffer, nextSign, rxbytearray.Length);
+            lastReceive = DateTime.Now;
+            nextSign = numbytes + nextSign;
             if (ModbusClient.DetectValidModbusFrame(readBuffer, nextSign))
             {
-                
-                dataReceived = true;
-                nextSign= 0;
 
-                    NetworkConnectionParameter networkConnectionParameter = new NetworkConnectionParameter();
-                    networkConnectionParameter.bytes = readBuffer;
-                    ParameterizedThreadStart pts = new ParameterizedThreadStart(this.ProcessReceivedData);
-                    Thread processDataThread = new Thread(pts);
-                    processDataThread.Start(networkConnectionParameter);
-                    dataReceived = false;
-                
+                dataReceived = true;
+                nextSign = 0;
+
+                NetworkConnectionParameter networkConnectionParameter = new NetworkConnectionParameter();
+                networkConnectionParameter.bytes = readBuffer;
+                ParameterizedThreadStart pts = new ParameterizedThreadStart(this.ProcessReceivedData);
+                Thread processDataThread = new Thread(pts);
+                processDataThread.Start(networkConnectionParameter);
+                dataReceived = false;
+
             }
             else
                 dataReceived = false;
         }
-		#endregion
- 
-		#region Method numberOfClientsChanged
+        #endregion
+
+        #region Method numberOfClientsChanged
         private void numberOfClientsChanged()
         {
             numberOfConnections = tcpHandler.NumberOfConnectedClients;
@@ -775,7 +775,7 @@ namespace EasyModbus
             }
         }
         #endregion
-         
+
         #region Method CreateAnswer
         private void CreateAnswer(ModbusProtocol receiveData, ModbusProtocol sendData, NetworkStream stream, int portIn, IPAddress ipAddressIn)
         {
@@ -803,7 +803,7 @@ namespace EasyModbus
                         sendData.exceptionCode = 1;
                         sendException(sendData.errorCode, sendData.exceptionCode, receiveData, sendData, stream, portIn, ipAddressIn);
                     }
-                    
+
                     break;
                 // Read Holding Registers
                 case 3:
@@ -815,7 +815,7 @@ namespace EasyModbus
                         sendData.exceptionCode = 1;
                         sendException(sendData.errorCode, sendData.exceptionCode, receiveData, sendData, stream, portIn, ipAddressIn);
                     }
-                    
+
                     break;
                 // Read Input Registers
                 case 4:
@@ -827,7 +827,7 @@ namespace EasyModbus
                         sendData.exceptionCode = 1;
                         sendException(sendData.errorCode, sendData.exceptionCode, receiveData, sendData, stream, portIn, ipAddressIn);
                     }
-                    
+
                     break;
                 // Write single coil
                 case 5:
@@ -839,7 +839,7 @@ namespace EasyModbus
                         sendData.exceptionCode = 1;
                         sendException(sendData.errorCode, sendData.exceptionCode, receiveData, sendData, stream, portIn, ipAddressIn);
                     }
-                    
+
                     break;
                 // Write single register
                 case 6:
@@ -851,54 +851,55 @@ namespace EasyModbus
                         sendData.exceptionCode = 1;
                         sendException(sendData.errorCode, sendData.exceptionCode, receiveData, sendData, stream, portIn, ipAddressIn);
                     }
-                    
-                        break;
+
+                    break;
                 // Write Multiple coils
                 case 15:
-                        if (!FunctionCode15Disabled)
-                            this.WriteMultipleCoils(receiveData, sendData, stream, portIn, ipAddressIn);
-                        else
-                        {
-                            sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
-                            sendData.exceptionCode = 1;
-                            sendException(sendData.errorCode, sendData.exceptionCode, receiveData, sendData, stream, portIn, ipAddressIn);
-                        }
-
-                        break;
-                // Write Multiple registers
-                case 16:
-                        if (!FunctionCode16Disabled)
-                            this.WriteMultipleRegisters(receiveData, sendData, stream, portIn, ipAddressIn);
-                        else
-                        {
-                            sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
-                            sendData.exceptionCode = 1;
-                            sendException(sendData.errorCode, sendData.exceptionCode, receiveData, sendData, stream, portIn, ipAddressIn);
-                        }
-
-                        break;
-                // Error: Function Code not supported
-                case 23:
-                        if (!FunctionCode23Disabled)
-                            this.ReadWriteMultipleRegisters(receiveData, sendData, stream, portIn, ipAddressIn);
-                        else
-                        {
-                            sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
-                            sendData.exceptionCode = 1;
-                            sendException(sendData.errorCode, sendData.exceptionCode, receiveData, sendData, stream, portIn, ipAddressIn);
-                        }
-
-                        break;
-                // Error: Function Code not supported
-                default: sendData.errorCode = (byte) (receiveData.functionCode + 0x80);
+                    if (!FunctionCode15Disabled)
+                        this.WriteMultipleCoils(receiveData, sendData, stream, portIn, ipAddressIn);
+                    else
+                    {
+                        sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
                         sendData.exceptionCode = 1;
                         sendException(sendData.errorCode, sendData.exceptionCode, receiveData, sendData, stream, portIn, ipAddressIn);
-                        break;
+                    }
+
+                    break;
+                // Write Multiple registers
+                case 16:
+                    if (!FunctionCode16Disabled)
+                        this.WriteMultipleRegisters(receiveData, sendData, stream, portIn, ipAddressIn);
+                    else
+                    {
+                        sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
+                        sendData.exceptionCode = 1;
+                        sendException(sendData.errorCode, sendData.exceptionCode, receiveData, sendData, stream, portIn, ipAddressIn);
+                    }
+
+                    break;
+                // Error: Function Code not supported
+                case 23:
+                    if (!FunctionCode23Disabled)
+                        this.ReadWriteMultipleRegisters(receiveData, sendData, stream, portIn, ipAddressIn);
+                    else
+                    {
+                        sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
+                        sendData.exceptionCode = 1;
+                        sendException(sendData.errorCode, sendData.exceptionCode, receiveData, sendData, stream, portIn, ipAddressIn);
+                    }
+
+                    break;
+                // Error: Function Code not supported
+                default:
+                    sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
+                    sendData.exceptionCode = 1;
+                    sendException(sendData.errorCode, sendData.exceptionCode, receiveData, sendData, stream, portIn, ipAddressIn);
+                    break;
             }
             sendData.timeStamp = DateTime.Now;
         }
         #endregion
-         
+
         private void ReadCoils(ModbusProtocol receiveData, ModbusProtocol sendData, NetworkStream stream, int portIn, IPAddress ipAddressIn)
         {
             sendData.response = true;
@@ -934,10 +935,10 @@ namespace EasyModbus
                 Byte[] data;
 
                 if (sendData.exceptionCode > 0)
-                	data = new byte[9 + 2*Convert.ToInt32(serialFlag)];
+                    data = new byte[9 + 2 * Convert.ToInt32(serialFlag)];
                 else
-                   	data = new byte[9 + sendData.byteCount+ 2*Convert.ToInt32(serialFlag)];
-              
+                    data = new byte[9 + sendData.byteCount + 2 * Convert.ToInt32(serialFlag)];
+
                 Byte[] byteData = new byte[2];
 
                 sendData.length = (byte)(data.Length - 6);
@@ -1024,7 +1025,7 @@ namespace EasyModbus
                     }
                 }
                 catch (Exception) { }
-            }  
+            }
         }
 
         private void ReadDiscreteInputs(ModbusProtocol receiveData, ModbusProtocol sendData, NetworkStream stream, int portIn, IPAddress ipAddressIn)
@@ -1146,7 +1147,7 @@ namespace EasyModbus
                     else
                     {
                         stream.Write(data, 0, data.Length);
-                        if(debug) StoreLogData.Instance.Store("Send Data: " + BitConverter.ToString(data), System.DateTime.Now);
+                        if (debug) StoreLogData.Instance.Store("Send Data: " + BitConverter.ToString(data), System.DateTime.Now);
                     }
                 }
                 catch (Exception) { }
@@ -1167,7 +1168,7 @@ namespace EasyModbus
                 sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
                 sendData.exceptionCode = 3;
             }
-            if (((receiveData.startingAdress + 1 + receiveData.quantity) > 65535)  | (receiveData.startingAdress < 0))   //Invalid Starting adress or Starting address + quantity
+            if (((receiveData.startingAdress + 1 + receiveData.quantity) > 65535) | (receiveData.startingAdress < 0))   //Invalid Starting adress or Starting address + quantity
             {
                 sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
                 sendData.exceptionCode = 2;
@@ -1179,11 +1180,11 @@ namespace EasyModbus
                 lock (lockHoldingRegisters)
                     Buffer.BlockCopy(holdingRegisters.localArray, receiveData.startingAdress * 2 + 2, sendData.sendRegisterValues, 0, receiveData.quantity * 2);
             }
-                if (sendData.exceptionCode > 0)
-                    sendData.length = 0x03;
-                else
-                    sendData.length = (ushort)(0x03 + sendData.byteCount);
-            
+            if (sendData.exceptionCode > 0)
+                sendData.length = 0x03;
+            else
+                sendData.length = (ushort)(0x03 + sendData.byteCount);
+
             if (true)
             {
                 Byte[] data;
@@ -1224,7 +1225,7 @@ namespace EasyModbus
                     data[8] = sendData.exceptionCode;
                     sendData.sendRegisterValues = null;
                 }
-   
+
 
                 if (sendData.sendRegisterValues != null)
                     for (int i = 0; i < (sendData.byteCount / 2); i++)
@@ -1266,7 +1267,7 @@ namespace EasyModbus
                     }
                 }
                 catch (Exception) { }
-            }       
+            }
         }
 
         private void ReadInputRegisters(ModbusProtocol receiveData, ModbusProtocol sendData, NetworkStream stream, int portIn, IPAddress ipAddressIn)
@@ -1283,7 +1284,7 @@ namespace EasyModbus
                 sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
                 sendData.exceptionCode = 3;
             }
-            if (((receiveData.startingAdress + 1 + receiveData.quantity) > 65535)  | (receiveData.startingAdress < 0))   //Invalid Starting adress or Starting address + quantity
+            if (((receiveData.startingAdress + 1 + receiveData.quantity) > 65535) | (receiveData.startingAdress < 0))   //Invalid Starting adress or Starting address + quantity
             {
                 sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
                 sendData.exceptionCode = 2;
@@ -1294,11 +1295,11 @@ namespace EasyModbus
                 sendData.sendRegisterValues = new Int16[receiveData.quantity];
                 Buffer.BlockCopy(inputRegisters.localArray, receiveData.startingAdress * 2 + 2, sendData.sendRegisterValues, 0, receiveData.quantity * 2);
             }
-                if (sendData.exceptionCode > 0)
-                    sendData.length = 0x03;
-                else
-                    sendData.length = (ushort)(0x03 + sendData.byteCount);
-            
+            if (sendData.exceptionCode > 0)
+                sendData.length = 0x03;
+            else
+                sendData.length = (ushort)(0x03 + sendData.byteCount);
+
             if (true)
             {
                 Byte[] data;
@@ -1333,7 +1334,7 @@ namespace EasyModbus
                 //ByteCount
                 data[8] = sendData.byteCount;
 
-                
+
                 if (sendData.exceptionCode > 0)
                 {
                     data[7] = sendData.errorCode;
@@ -1402,7 +1403,7 @@ namespace EasyModbus
                 sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
                 sendData.exceptionCode = 3;
             }
-            if (((receiveData.startingAdress + 1) > 65535)  | (receiveData.startingAdress < 0))    //Invalid Starting adress or Starting address + quantity
+            if (((receiveData.startingAdress + 1) > 65535) | (receiveData.startingAdress < 0))    //Invalid Starting adress or Starting address + quantity
             {
                 sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
                 sendData.exceptionCode = 2;
@@ -1420,11 +1421,11 @@ namespace EasyModbus
                         coils[receiveData.startingAdress + 1] = false;
                 }
             }
-                if (sendData.exceptionCode > 0)
-                    sendData.length = 0x03;
-                else
-                    sendData.length = 0x06;
-            
+            if (sendData.exceptionCode > 0)
+                sendData.length = 0x03;
+            else
+                sendData.length = 0x06;
+
             if (true)
             {
                 Byte[] data;
@@ -1511,7 +1512,7 @@ namespace EasyModbus
                 }
                 catch (Exception) { }
                 if (CoilsChanged != null)
-                    CoilsChanged(receiveData.startingAdress+1, 1);
+                    CoilsChanged(receiveData.startingAdress + 1, 1);
             }
         }
 
@@ -1526,13 +1527,13 @@ namespace EasyModbus
             sendData.functionCode = receiveData.functionCode;
             sendData.startingAdress = receiveData.startingAdress;
             sendData.receiveRegisterValues = receiveData.receiveRegisterValues;
-           
+
             if ((receiveData.receiveRegisterValues[0] < 0x0000) | (receiveData.receiveRegisterValues[0] > 0xFFFF))  //Invalid Value
             {
                 sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
                 sendData.exceptionCode = 3;
             }
-            if (((receiveData.startingAdress + 1) > 65535)  | (receiveData.startingAdress < 0))    //Invalid Starting adress or Starting address + quantity
+            if (((receiveData.startingAdress + 1) > 65535) | (receiveData.startingAdress < 0))    //Invalid Starting adress or Starting address + quantity
             {
                 sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
                 sendData.exceptionCode = 2;
@@ -1542,11 +1543,11 @@ namespace EasyModbus
                 lock (lockHoldingRegisters)
                     holdingRegisters[receiveData.startingAdress + 1] = unchecked((short)receiveData.receiveRegisterValues[0]);
             }
-                if (sendData.exceptionCode > 0)
-                    sendData.length = 0x03;
-                else
-                    sendData.length = 0x06;
-            
+            if (sendData.exceptionCode > 0)
+                sendData.length = 0x03;
+            else
+                sendData.length = 0x06;
+
             if (true)
             {
                 Byte[] data;
@@ -1634,7 +1635,7 @@ namespace EasyModbus
                 }
                 catch (Exception) { }
                 if (HoldingRegistersChanged != null)
-                    HoldingRegistersChanged(receiveData.startingAdress+1, 1);
+                    HoldingRegistersChanged(receiveData.startingAdress + 1, 1);
             }
         }
 
@@ -1649,13 +1650,13 @@ namespace EasyModbus
             sendData.functionCode = receiveData.functionCode;
             sendData.startingAdress = receiveData.startingAdress;
             sendData.quantity = receiveData.quantity;
-            
+
             if ((receiveData.quantity == 0x0000) | (receiveData.quantity > 0x07B0))  //Invalid Quantity
             {
                 sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
                 sendData.exceptionCode = 3;
             }
-            if ((((int)receiveData.startingAdress + 1 + (int)receiveData.quantity) > 65535)  | (receiveData.startingAdress < 0))    //Invalid Starting adress or Starting address + quantity
+            if ((((int)receiveData.startingAdress + 1 + (int)receiveData.quantity) > 65535) | (receiveData.startingAdress < 0))    //Invalid Starting adress or Starting address + quantity
             {
                 sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
                 sendData.exceptionCode = 2;
@@ -1666,20 +1667,20 @@ namespace EasyModbus
                     for (int i = 0; i < receiveData.quantity; i++)
                     {
                         int shift = i % 16;
-                    /*                if ((i == receiveData.quantity - 1) & (receiveData.quantity % 2 != 0))
-                                    {
-                                        if (shift < 8)
-                                            shift = shift + 8;
-                                        else
-                                            shift = shift - 8;
-                                    }*/
+                        /*                if ((i == receiveData.quantity - 1) & (receiveData.quantity % 2 != 0))
+                                        {
+                                            if (shift < 8)
+                                                shift = shift + 8;
+                                            else
+                                                shift = shift - 8;
+                                        }*/
                         int mask = 0x1;
                         mask = mask << (shift);
                         if ((receiveData.receiveCoilValues[i / 16] & (ushort)mask) == 0)
-                        
+
                             coils[receiveData.startingAdress + i + 1] = false;
                         else
-                        
+
                             coils[receiveData.startingAdress + i + 1] = true;
 
                     }
@@ -1774,7 +1775,7 @@ namespace EasyModbus
                 }
                 catch (Exception) { }
                 if (CoilsChanged != null)
-                    CoilsChanged(receiveData.startingAdress+1, receiveData.quantity);
+                    CoilsChanged(receiveData.startingAdress + 1, receiveData.quantity);
             }
         }
 
@@ -1795,7 +1796,7 @@ namespace EasyModbus
                 sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
                 sendData.exceptionCode = 3;
             }
-            if ((((int)receiveData.startingAdress + 1 + (int)receiveData.quantity) > 65535)  | (receiveData.startingAdress < 0))   //Invalid Starting adress or Starting address + quantity
+            if ((((int)receiveData.startingAdress + 1 + (int)receiveData.quantity) > 65535) | (receiveData.startingAdress < 0))   //Invalid Starting adress or Starting address + quantity
             {
                 sendData.errorCode = (byte)(receiveData.functionCode + 0x80);
                 sendData.exceptionCode = 2;
@@ -1895,10 +1896,10 @@ namespace EasyModbus
                         stream.Write(data, 0, data.Length);
                         if (debug) StoreLogData.Instance.Store("Send Data: " + BitConverter.ToString(data), System.DateTime.Now);
                     }
-                    }
+                }
                 catch (Exception) { }
                 if (HoldingRegistersChanged != null)
-                    HoldingRegistersChanged(receiveData.startingAdress+1, receiveData.quantity);
+                    HoldingRegistersChanged(receiveData.startingAdress + 1, receiveData.quantity);
             }
         }
 
@@ -2029,7 +2030,7 @@ namespace EasyModbus
                 }
                 catch (Exception) { }
                 if (HoldingRegistersChanged != null)
-                    HoldingRegistersChanged(receiveData.startingAddressWrite+1, receiveData.quantityWrite);
+                    HoldingRegistersChanged(receiveData.startingAddressWrite + 1, receiveData.quantityWrite);
             }
         }
 
@@ -2044,46 +2045,46 @@ namespace EasyModbus
             sendData.errorCode = (byte)errorCode;
             sendData.exceptionCode = (byte)exceptionCode;
 
-             if (sendData.exceptionCode > 0)
+            if (sendData.exceptionCode > 0)
                 sendData.length = 0x03;
             else
                 sendData.length = (ushort)(0x03 + sendData.byteCount);
 
-             if (true)
-             {
-                 Byte[] data;
-                 if (sendData.exceptionCode > 0)
-                     data = new byte[9 + 2 * Convert.ToInt32(serialFlag)];
-                 else
-                     data = new byte[9 + sendData.byteCount + 2 * Convert.ToInt32(serialFlag)];
-                 Byte[] byteData = new byte[2];
-                 sendData.length = (byte)(data.Length - 6);
+            if (true)
+            {
+                Byte[] data;
+                if (sendData.exceptionCode > 0)
+                    data = new byte[9 + 2 * Convert.ToInt32(serialFlag)];
+                else
+                    data = new byte[9 + sendData.byteCount + 2 * Convert.ToInt32(serialFlag)];
+                Byte[] byteData = new byte[2];
+                sendData.length = (byte)(data.Length - 6);
 
-                 //Send Transaction identifier
-                 byteData = BitConverter.GetBytes((int)sendData.transactionIdentifier);
-                 data[0] = byteData[1];
-                 data[1] = byteData[0];
+                //Send Transaction identifier
+                byteData = BitConverter.GetBytes((int)sendData.transactionIdentifier);
+                data[0] = byteData[1];
+                data[1] = byteData[0];
 
-                 //Send Protocol identifier
-                 byteData = BitConverter.GetBytes((int)sendData.protocolIdentifier);
-                 data[2] = byteData[1];
-                 data[3] = byteData[0];
+                //Send Protocol identifier
+                byteData = BitConverter.GetBytes((int)sendData.protocolIdentifier);
+                data[2] = byteData[1];
+                data[3] = byteData[0];
 
-                 //Send length
-                 byteData = BitConverter.GetBytes((int)sendData.length);
-                 data[4] = byteData[1];
-                 data[5] = byteData[0];
+                //Send length
+                byteData = BitConverter.GetBytes((int)sendData.length);
+                data[4] = byteData[1];
+                data[5] = byteData[0];
 
-                 //Unit Identifier
-                 data[6] = sendData.unitIdentifier;
-
-
-                 data[7] = sendData.errorCode;
-                 data[8] = sendData.exceptionCode;
+                //Unit Identifier
+                data[6] = sendData.unitIdentifier;
 
 
-                 try
-                 {
+                data[7] = sendData.errorCode;
+                data[8] = sendData.exceptionCode;
+
+
+                try
+                {
                     if (serialFlag)
                     {
                         if (!serialport.IsOpen)
@@ -2113,9 +2114,9 @@ namespace EasyModbus
                         stream.Write(data, 0, data.Length);
                         if (debug) StoreLogData.Instance.Store("Send Data: " + BitConverter.ToString(data), System.DateTime.Now);
                     }
-                 }
-                 catch (Exception) { }
-             }
+                }
+                catch (Exception) { }
+            }
         }
 
         private void CreateLogData(ModbusProtocol receiveData, ModbusProtocol sendData)
@@ -2157,7 +2158,7 @@ namespace EasyModbus
             set
             {
                 port = value;
-                
+
 
             }
         }
@@ -2173,18 +2174,18 @@ namespace EasyModbus
                 udpFlag = value;
             }
         }
-        
- 		public bool SerialFlag
- 		{
- 			get
- 			{
- 				return serialFlag;
- 			}
- 			set
- 			{
- 				serialFlag = value;
- 			}
- 		}
+
+        public bool SerialFlag
+        {
+            get
+            {
+                return serialFlag;
+            }
+            set
+            {
+                serialFlag = value;
+            }
+        }
 
         public int Baudrate
         {
@@ -2275,90 +2276,90 @@ namespace EasyModbus
 
 
 
-    public class HoldingRegisters
-    {
-        public Int16[] localArray = new Int16[65535];
-        ModbusServer modbusServer;
-     
-        public HoldingRegisters(EasyModbus.ModbusServer modbusServer)
+        public class HoldingRegisters
         {
-            this.modbusServer = modbusServer;
-        }
+            public Int16[] localArray = new Int16[65535];
+            ModbusServer modbusServer;
 
-        public Int16 this[int x]
-        {
-            get { return this.localArray[x]; }
-            set
-            {              
-                this.localArray[x] = value;
-                
-            }
-        }
-    }
-
-    public class InputRegisters
-    {
-        public Int16[] localArray = new Int16[65535];
-        ModbusServer modbusServer;
-
-        public InputRegisters(EasyModbus.ModbusServer modbusServer)
-        {
-            this.modbusServer = modbusServer;
-        }
-
-        public Int16 this[int x]
-        {
-            get { return this.localArray[x]; }
-            set
+            public HoldingRegisters(EasyModbus.ModbusServer modbusServer)
             {
-                this.localArray[x] = value;
-
+                this.modbusServer = modbusServer;
             }
-        }
-    }
 
-    public class Coils
-    {
-        public bool[] localArray = new bool[65535];
-        ModbusServer modbusServer;
-
-        public Coils(EasyModbus.ModbusServer modbusServer)
-        {
-            this.modbusServer = modbusServer;
-        }
-
-        public bool this[int x]
-        {
-            get { return this.localArray[x]; }
-            set
+            public Int16 this[int x]
             {
-                this.localArray[x] = value;
-            
+                get { return this.localArray[x]; }
+                set
+                {
+                    this.localArray[x] = value;
+
+                }
             }
         }
-    }
 
-    public class DiscreteInputs
-    {
-        public bool[] localArray = new bool[65535];
-        ModbusServer modbusServer;
-
-        public DiscreteInputs(EasyModbus.ModbusServer modbusServer)
+        public class InputRegisters
         {
-            this.modbusServer = modbusServer;
-        }
+            public Int16[] localArray = new Int16[65535];
+            ModbusServer modbusServer;
 
-        public bool this[int x]
-        {
-            get { return this.localArray[x]; }
-            set
+            public InputRegisters(EasyModbus.ModbusServer modbusServer)
             {
-                this.localArray[x] = value;
-              
+                this.modbusServer = modbusServer;
+            }
+
+            public Int16 this[int x]
+            {
+                get { return this.localArray[x]; }
+                set
+                {
+                    this.localArray[x] = value;
+
+                }
             }
         }
 
-      
+        public class Coils
+        {
+            public bool[] localArray = new bool[65535];
+            ModbusServer modbusServer;
+
+            public Coils(EasyModbus.ModbusServer modbusServer)
+            {
+                this.modbusServer = modbusServer;
+            }
+
+            public bool this[int x]
+            {
+                get { return this.localArray[x]; }
+                set
+                {
+                    this.localArray[x] = value;
+
+                }
+            }
+        }
+
+        public class DiscreteInputs
+        {
+            public bool[] localArray = new bool[65535];
+            ModbusServer modbusServer;
+
+            public DiscreteInputs(EasyModbus.ModbusServer modbusServer)
+            {
+                this.modbusServer = modbusServer;
+            }
+
+            public bool this[int x]
+            {
+                get { return this.localArray[x]; }
+                set
+                {
+                    this.localArray[x] = value;
+
+                }
+            }
+
+
         }
     }
 }
