@@ -361,12 +361,45 @@ namespace EasyModbus
 
         public void Listen()
         {
-            
-            listenerThread = new Thread(ListenerThread);
-            listenerThread.Start();
+            // TODO had to add code for cancellation token, may need some work
+            ParameterizedThreadStart pts = new ParameterizedThreadStart(ListenerThread);
+            listenerThread = new Thread(pts);
+            CancellationToken cancellationToken = new();
+            //listenerThread = new Thread(ListenerThread);
+            listenerThread.Start(cancellationToken);
+        }
+        public void Listen(CancellationToken cancellationToken)
+        {
+            ParameterizedThreadStart pts = new ParameterizedThreadStart(ListenerThread);
+            listenerThread = new Thread(pts);
+            listenerThread.Start(cancellationToken);
         }
 
         public void StopListening()
+        {
+            if (SerialFlag & (serialport != null))
+            {
+                if (serialport.IsOpen)
+                    serialport.Close();
+                shouldStop = true;
+            }
+            try
+            {
+                tcpHandler.Disconnect();
+                listenerThread.Abort();
+
+            }
+            catch (Exception) { }
+            listenerThread.Join();
+            try
+            {
+
+                clientConnectionThread.Abort();
+            }
+            catch (Exception) { }
+        }
+
+        public void StopListening(CancellationToken cancellationToken)
         {
         	if (SerialFlag & (serialport != null))
         	{
@@ -377,17 +410,12 @@ namespace EasyModbus
             try
             {
                 tcpHandler.Disconnect();
-                listenerThread.Abort();
                 
             }
             catch (Exception) { }
-            listenerThread.Join();
-            try
-            {
-
-                clientConnectionThread.Abort();
-            }
-            catch (Exception) { }
+            // If the CancellationToken is marked as "needs to cancel",
+            // this will throw the appropriate exception.
+            cancellationToken.ThrowIfCancellationRequested();
         }
         
         private void ListenerThread()
@@ -459,8 +487,79 @@ namespace EasyModbus
 
                 }
         }
-    
-		#region SerialHandler
+
+        private void ListenerThread(object obj)
+        {
+            CancellationToken cancellationToken = (CancellationToken)obj;
+            if (!udpFlag & !serialFlag && !cancellationToken.IsCancellationRequested)
+            {
+                if (udpClient != null)
+                {
+                    try
+                    {
+                        udpClient.Close();
+                    }
+                    catch (Exception) { }
+                }
+                tcpHandler = new TCPHandler(LocalIPAddress, port);
+                if (debug) StoreLogData.Instance.Store($"EasyModbus Server listing for incomming data at Port {port}, local IP {LocalIPAddress}", System.DateTime.Now);
+                tcpHandler.dataChanged += new TCPHandler.DataChanged(ProcessReceivedData);
+                tcpHandler.numberOfClientsChanged += new TCPHandler.NumberOfClientsChanged(numberOfClientsChanged);
+            }
+            else if (serialFlag && !cancellationToken.IsCancellationRequested)
+            {
+                if (serialport == null)
+                {
+                    if (debug) StoreLogData.Instance.Store("EasyModbus RTU-Server listing for incomming data at Serial Port " + serialPort, System.DateTime.Now);
+                    serialport = new SerialPort();
+                    serialport.PortName = serialPort;
+                    serialport.BaudRate = this.baudrate;
+                    serialport.Parity = this.parity;
+                    serialport.StopBits = stopBits;
+                    serialport.WriteTimeout = 10000;
+                    serialport.ReadTimeout = 1000;
+                    serialport.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
+                    serialport.Open();
+                }
+            }
+            else
+                while (!shouldStop && !cancellationToken.IsCancellationRequested)
+                {
+                    if (udpFlag)
+                    {
+                        if (udpClient == null | PortChanged)
+                        {
+                            IPEndPoint localEndoint = new IPEndPoint(LocalIPAddress, port);
+                            udpClient = new UdpClient(localEndoint);
+                            if (debug) StoreLogData.Instance.Store($"EasyModbus Server listing for incomming data at Port {port}, local IP {LocalIPAddress}", System.DateTime.Now);
+                            udpClient.Client.ReceiveTimeout = 1000;
+                            iPEndPoint = new IPEndPoint(IPAddress.Any, port);
+                            PortChanged = false;
+                        }
+                        if (tcpHandler != null)
+                            tcpHandler.Disconnect();
+                        try
+                        {
+                            bytes = udpClient.Receive(ref iPEndPoint);
+                            portIn = iPEndPoint.Port;
+                            NetworkConnectionParameter networkConnectionParameter = new NetworkConnectionParameter();
+                            networkConnectionParameter.bytes = bytes;
+                            ipAddressIn = iPEndPoint.Address;
+                            networkConnectionParameter.portIn = portIn;
+                            networkConnectionParameter.ipAddressIn = ipAddressIn;
+                            ParameterizedThreadStart pts = new ParameterizedThreadStart(this.ProcessReceivedData);
+                            Thread processDataThread = new Thread(pts);
+                            processDataThread.Start(networkConnectionParameter);
+                        }
+                        catch (Exception)
+                        {
+                        }
+                    }
+
+                }
+        }
+
+        #region SerialHandler
         private bool dataReceived = false;
         private byte[] readBuffer = new byte[2094];
         private DateTime lastReceive;
