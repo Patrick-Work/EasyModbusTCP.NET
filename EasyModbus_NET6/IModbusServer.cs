@@ -31,6 +31,8 @@ namespace EasyModbus
     public interface IModbusServer
     {
         int Baudrate { get; set; }
+        ModbusServer.Coils coils { get; set; }
+        ModbusServer.DiscreteInputs discreteInputs { get; set; }
         bool FunctionCode15Disabled { get; set; }
         bool FunctionCode16Disabled { get; set; }
         bool FunctionCode1Disabled { get; set; }
@@ -40,6 +42,8 @@ namespace EasyModbus
         bool FunctionCode4Disabled { get; set; }
         bool FunctionCode5Disabled { get; set; }
         bool FunctionCode6Disabled { get; set; }
+        ModbusServer.HoldingRegisters holdingRegisters { get; set; }
+        ModbusServer.InputRegisters inputRegisters { get; set; }
         IPAddress LocalIPAddress { get; set; }
         string LogFileFilename { get; set; }
         ModbusProtocol[] ModbusLogData { get; }

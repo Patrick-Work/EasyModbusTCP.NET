@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace EasyModbus
 {
-    public partial class ModbusClient
+    public partial class ModbusClient : IModbusClient
     {
 
         public enum RegisterOrder { LowHigh = 0, HighLow = 1 };
@@ -100,7 +100,7 @@ namespace EasyModbus
                                 };
             return BitConverter.ToSingle(floatBytes, 0);
         }
-       
+
 
         /// <summary>
         /// Converts two ModbusRegisters to Float, Registers can by swapped
@@ -157,7 +157,7 @@ namespace EasyModbus
         /// </summary>
         /// <param name="registers">four Register values received from Modbus</param>
         /// <returns>64 bit value</returns>
-    
+
         public static Int64 ConvertRegistersToLong(int[] registers)
         {
             if (registers.Length != 4)

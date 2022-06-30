@@ -36,7 +36,7 @@ using System.IO.Ports;
 namespace EasyModbus
 {
 
-    public partial class ModbusClient : IModbusClient
+    public partial class ModbusClient
     {
 
 
@@ -323,6 +323,7 @@ namespace EasyModbus
 
 
 
+ 
 
     }
 }

@@ -290,10 +290,10 @@ namespace EasyModbus
         ModbusProtocol sendData = new ModbusProtocol();
         Byte[] bytes = new Byte[2100];
         //public Int16[] _holdingRegisters = new Int16[65535];
-        public HoldingRegisters holdingRegisters;
-        public InputRegisters inputRegisters;
-        public Coils coils;
-        public DiscreteInputs discreteInputs;
+        //public HoldingRegisters holdingRegisters;
+        //public InputRegisters inputRegisters;
+        //public Coils coils;
+        //public DiscreteInputs discreteInputs;
         private int numberOfConnections = 0;
         private bool udpFlag;
         private bool serialFlag;
@@ -311,6 +311,11 @@ namespace EasyModbus
         Thread listenerThread;
         Thread clientConnectionThread;
         private ModbusProtocol[] modbusLogData = new ModbusProtocol[100];
+
+        public HoldingRegisters holdingRegisters { get; set; }
+        public InputRegisters inputRegisters { get; set; }
+        public Coils coils { get; set; }
+        public DiscreteInputs discreteInputs { get; set; }
         public bool FunctionCode1Disabled { get; set; }
         public bool FunctionCode2Disabled { get; set; }
         public bool FunctionCode3Disabled { get; set; }
